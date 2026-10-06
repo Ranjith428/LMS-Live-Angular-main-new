@@ -23,6 +23,19 @@ describe('CreatePackageModal', () => {
     expect(component).toBeTruthy();
   });
 
+  it('blocks non-integer characters in the package limit inputs', () => {
+    const host = fixture.nativeElement as HTMLElement;
+    const userLimit = host.querySelector<HTMLInputElement>('[formControlName="userLimit"]');
+    const storageLimit = host.querySelector<HTMLInputElement>('[formControlName="storageLimit"]');
+    if (!userLimit || !storageLimit) throw new Error('Package limit inputs were not rendered');
+
+    for (const input of [userLimit, storageLimit]) {
+      const event = new KeyboardEvent('keydown', { key: '.', bubbles: true, cancelable: true });
+      input.dispatchEvent(event);
+      expect(event.defaultPrevented).toBe(true);
+    }
+  });
+
   it('prefills and submits the edited package while retaining its permissions', () => {
     const permissions: PackageRecord['permissions'] = [
       {

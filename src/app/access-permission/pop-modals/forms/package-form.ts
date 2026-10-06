@@ -29,6 +29,14 @@ export function wordCountOf(value: string | null | undefined): number {
   return text ? text.split(/\s+/).length : 0;
 }
 
+/** Ensures package limits are whole numbers. */
+export function wholeNumber(): ValidatorFn {
+  return (control: AbstractControl<number | null>): ValidationErrors | null => {
+    const value = control.value;
+    return value === null || Number.isInteger(value) ? null : { integer: true };
+  };
+}
+
 /**
  * Client-side duplicate-name check for fast feedback. The server remains the
  * source of truth — PackageManagementComponent maps a 409 response to the
@@ -87,7 +95,7 @@ export function buildPackageDetailsForm(
     description: new FormControl('', { nonNullable: true, validators: [maxWordCount(500)] }),
     price: new FormControl<number | null>(null, [Validators.required, Validators.min(0.01)]),
     billingCycle: new FormControl('', { nonNullable: true, validators: [Validators.required] }),
-    userLimit: new FormControl<number | null>(null, [Validators.required, Validators.min(1)]),
-    storageLimit: new FormControl<number | null>(null, [Validators.min(0)]),
+    userLimit: new FormControl<number | null>(null, [Validators.required, Validators.min(1), wholeNumber()]),
+    storageLimit: new FormControl<number | null>(null, [Validators.min(0), wholeNumber()]),
   });
 }

@@ -66,6 +66,17 @@ export class CreatePackageModal implements OnChanges {
     }
   }
 
+  protected preventNonIntegerInput(event: KeyboardEvent): void {
+    if (
+      ['e', 'E', '+', '-', '.', ','].includes(event.key) &&
+      !event.ctrlKey &&
+      !event.metaKey &&
+      !event.altKey
+    ) {
+      event.preventDefault();
+    }
+  }
+
   protected onSubmit(): void {
     this.form.markAllAsTouched();
     if (this.form.invalid) return;

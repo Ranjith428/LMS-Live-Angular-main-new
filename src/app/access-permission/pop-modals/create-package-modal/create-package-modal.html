@@ -71,20 +71,26 @@
         </div>
         <div>
           <input formControlName="userLimit" type="number" min="1" step="1" placeholder="User limits*"
+                 (keydown)="preventNonIntegerInput($event)"
                  [attr.aria-invalid]="form.controls.userLimit.touched && form.controls.userLimit.invalid"
                  class="h-12 w-full rounded-lg border-0 bg-[#f6f6f6] px-4 text-xs outline-none placeholder:text-[#555] 2xl:h-[62px] 2xl:rounded-xl 2xl:px-5 2xl:text-sm" />
           @if (form.controls.userLimit.touched && form.controls.userLimit.hasError('required')) {
             <p class="mt-1 text-[9px] text-red-600">User Limit is required.</p>
           } @else if (form.controls.userLimit.touched && form.controls.userLimit.hasError('min')) {
             <p class="mt-1 text-[9px] text-red-600">User Limit must be 1 or greater.</p>
+          } @else if (form.controls.userLimit.touched && form.controls.userLimit.hasError('integer')) {
+            <p class="mt-1 text-[9px] text-red-600">User Limit must be a whole number.</p>
           }
         </div>
         <div>
           <input formControlName="storageLimit" type="number" min="0" step="1" placeholder="Storage limits"
+                 (keydown)="preventNonIntegerInput($event)"
                  [attr.aria-invalid]="form.controls.storageLimit.touched && form.controls.storageLimit.invalid"
                  class="h-12 w-full rounded-lg border-0 bg-[#f6f6f6] px-4 text-xs outline-none placeholder:text-[#555] 2xl:h-[62px] 2xl:rounded-xl 2xl:px-5 2xl:text-sm" />
           @if (form.controls.storageLimit.touched && form.controls.storageLimit.hasError('min')) {
             <p class="mt-1 text-[9px] text-red-600">Storage Limit must be zero or greater.</p>
+          } @else if (form.controls.storageLimit.touched && form.controls.storageLimit.hasError('integer')) {
+            <p class="mt-1 text-[9px] text-red-600">Storage Limit must be a whole number.</p>
           }
         </div>
       </div>
