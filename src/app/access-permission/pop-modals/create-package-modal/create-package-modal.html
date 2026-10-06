@@ -81,7 +81,7 @@
           } @else if (form.controls.userLimit.touched && form.controls.userLimit.hasError('integer')) {
             <p class="mt-1 text-[9px] text-red-600">User Limit must be a whole number.</p>
           }
-        </div>
+        </div>  
         <div>
           <input formControlName="storageLimit" type="number" min="0" step="1" placeholder="Storage limits"
                  (keydown)="preventNonIntegerInput($event)"
