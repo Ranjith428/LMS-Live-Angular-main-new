@@ -1,30 +1,45 @@
 import { Component, computed, inject, OnInit, signal } from '@angular/core';
-import { CurrencyPipe } from '@angular/common';
+import { CurrencyPipe, DatePipe } from '@angular/common';
 import { Router } from '@angular/router';
 import { finalize, map, of, switchMap } from 'rxjs';
 import { CreatePackageModal } from '../pop-modals/create-package-modal/create-package-modal';
 import { AssignPackageModal, PackageAssignRequest } from '../pop-modals/assign-package-modal/assign-package-modal';
-import { PackagePayload, PackageRecord, PackageService, PackageDraftService } from '../../services/package.service';
+import {
+  PackagePayload,
+  PackagePermissionFeature,
+  PackageRecord,
+  PackageService,
+  PackageDraftService,
+} from '../../services/package.service';
 import { AdminSummary, AuthService } from '../../services/auth';
-
+ 
 export interface AdminPackageRow {
   admin: AdminSummary;
   package: PackageRecord | null;
 }
-
+ 
+/** Absolute paths, matching app.routes.ts (children of 'super-admin-dashboard'). */
+const PACKAGE_LIST_PATH = '/super-admin-dashboard/package';
+const PACKAGE_PERMISSIONS_PATH = '/super-admin-dashboard/package/create/permissions';
+ 
 const serverActionErrorMessage =
   'Unable to complete the requested action due to a server error. Please try again later.';
 const isServerError = (status?: number): boolean => status === 0 || (status ?? 0) >= 500;
 const isDuplicateNameError = (status: number | undefined, message: string): boolean =>
   status === 409 || /(?:package(?: name)?.*(?:same name|exists|duplicate)|(?:exists|duplicate).*package name)/i.test(message);
 
+function hasPackageDetails(row: AdminPackageRow): boolean {
+  const item = row.package;
+  return Boolean(item && (item.name?.trim() || item.price != null || item.billingCycle?.trim()));
+}
+
 function extractBackendMessage(error: { error?: { detail?: string; message?: string } | string }): string {
   return typeof error.error === 'string' ? error.error : error.error?.detail ?? error.error?.message ?? '';
 }
-
+ 
 @Component({
   selector: 'app-package-management',
-  imports: [CurrencyPipe, CreatePackageModal, AssignPackageModal],
+  imports: [CurrencyPipe, DatePipe, CreatePackageModal, AssignPackageModal],
   templateUrl: './package-management.html',
   styleUrl: './package-management.css',
 })
@@ -33,7 +48,7 @@ export class PackageManagement implements OnInit {
   private readonly authApi = inject(AuthService);
   private readonly router = inject(Router);
   private readonly draft = inject(PackageDraftService);
-
+ 
   // List state
   protected readonly rows = signal<AdminPackageRow[]>([]);
   protected readonly loading = signal(true);
@@ -43,9 +58,9 @@ export class PackageManagement implements OnInit {
   protected readonly totalElements = signal(0);
   protected readonly page = signal(0);
   protected readonly pageSize = 20;
-
-  protected readonly filteredRows = computed(() => this.rows());
-
+ 
+  protected readonly filteredRows = computed(() => this.rows().filter(hasPackageDetails));
+ 
   protected readonly packages = signal<PackageRecord[]>([]);
   /**
    * Surfaces a failed loadAllPackagesForDialogs() call instead of silently
@@ -59,7 +74,7 @@ export class PackageManagement implements OnInit {
    * empty" instead of flashing a false "No packages available" state.
    */
   protected readonly packagesLoading = signal(false);
-
+ 
   /**
    * Full admin roster used ONLY by the Assign modal's admin picker, for the
    * case where Assign is opened from the header button (no row context).
@@ -69,40 +84,41 @@ export class PackageManagement implements OnInit {
   protected readonly admins = signal<AdminSummary[]>([]);
   protected readonly adminsLoading = signal(false);
   protected readonly adminsLoadError = signal('');
-
+ 
   // Create flow
   protected readonly createDialogOpen = signal(false);
-
+  protected readonly editingPackage = signal<PackageRecord | null>(null);
+  protected readonly viewingPackage = signal<PackageRecord | null>(null);
+ 
   // Assign flow ("Update package" in the UI) — assigningAdmin() is null
   // when opened from the header button (no row context yet); the modal
   // shows an admin search picker in that case. It's set to a specific
   // admin when opened from a row's popover.
   protected readonly assignDialogOpen = signal(false);
   protected readonly assigningAdmin = signal<AdminSummary | null>(null);
-
+ 
   // Shared UI state
   protected readonly submitting = signal(false);
   protected readonly formError = signal('');
+  protected readonly actionError = signal('');
   protected readonly successMessage = signal('');
-
+ 
   /**
    * id of the admin row whose kebab (⋮) action menu is currently open.
-   * Only one row's popover can be open at a time. Track by admin.id (not
-   * package.id) since Assign rows have no package yet but still need a
-   * menu identity.
+   * Only one row's popover can be open at a time.
    */
   protected readonly openActionMenuId = signal<number | null>(null);
   /** Tracks an in-flight delete so the row's delete button can show a busy state and block double-clicks. */
   protected readonly deletingPackageId = signal<number | null>(null);
-
+ 
   ngOnInit(): void {
     this.loadPackages();
     this.loadAllPackagesForDialogs();
     this.flashSuccessIfReturningFromPermissionStep();
   }
-
+ 
   // ---- List (Admin + Package) -----------------------------------------------------------
-
+ 
   protected loadPackages(): void {
     this.loading.set(true);
     this.loadError.set('');
@@ -140,19 +156,19 @@ export class PackageManagement implements OnInit {
           ),
       });
   }
-
+ 
   protected onSearch(value: string): void {
     this.search.set(value);
     this.page.set(0);
     this.loadPackages();
   }
-
+ 
   protected onFilter(value: 'All' | 'Active' | 'Inactive'): void {
     this.statusFilter.set(value);
     this.page.set(0);
     this.loadPackages();
   }
-
+ 
   /**
    * Loads the full package catalog used by the Assign modal's dropdown.
    * Errors are surfaced via packagesLoadError() instead of being swallowed,
@@ -180,12 +196,12 @@ export class PackageManagement implements OnInit {
         },
       });
   }
-
+ 
   /** Lets the Assign modal offer a manual retry without a full page reload. */
   protected retryLoadPackagesForDialogs(): void {
     this.loadAllPackagesForDialogs();
   }
-
+ 
   /**
    * Loads the full admin roster for the Assign modal's admin picker. Only
    * called when Assign is opened WITHOUT row context (header button) — a
@@ -213,10 +229,8 @@ export class PackageManagement implements OnInit {
         },
       });
   }
-
-  // ---- Row action menu (delete / assign) ----------------------------------------
-
-  /** Toggles the kebab popover for a given admin row; opening one closes any other. */
+ 
+  // ---- Row action menu ----------------------------------------------------------
   protected toggleActionMenu(adminId: number, event: MouseEvent): void {
     event.stopPropagation();
     this.openActionMenuId.set(this.openActionMenuId() === adminId ? null : adminId);
@@ -226,7 +240,7 @@ export class PackageManagement implements OnInit {
   protected closeActionMenu(): void {
     this.openActionMenuId.set(null);
   }
-
+ 
   /**
    * Delete action from the popover. Confirms first (destructive, no undo),
    * then calls PackageService.delete(id).
@@ -236,9 +250,10 @@ export class PackageManagement implements OnInit {
     this.closeActionMenu();
     if (this.deletingPackageId() != null) return;
 
+    this.actionError.set('');
     const confirmed = window.confirm(`Delete package "${item.name}"? This cannot be undone.`);
     if (!confirmed) return;
-
+ 
     this.deletingPackageId.set(item.id);
     this.packagesApi
       .delete(item.id)
@@ -249,30 +264,91 @@ export class PackageManagement implements OnInit {
           this.loadAllPackagesForDialogs();
           this.flashSuccess('Package deleted successfully.');
         },
-        error: (error) => this.handleSaveError(error, 'Package deletion failed. Please try again.'),
+        error: (error) => {
+          console.error('Package deletion failed:', error);
+          this.actionError.set(this.getSaveErrorMessage(error, 'Package deletion failed. Please try again.'));
+        },
       });
   }
 
-  // ---- Create -----------------------------------------------------------
-
-  protected openCreateDialog(): void {
-    this.formError.set('');
-    this.createDialogOpen.set(true);
+  protected openViewDialog(item: PackageRecord): void {
+    this.closeActionMenu();
+    this.viewingPackage.set(item);
   }
 
+  protected closeViewDialog(): void {
+    this.viewingPackage.set(null);
+  }
+
+  protected openEditDialog(item: PackageRecord): void {
+    this.closeActionMenu();
+    this.actionError.set('');
+    this.editingPackage.set(item);
+  }
+
+  protected closeEditDialog(): void {
+    if (this.submitting()) return;
+    this.editingPackage.set(null);
+  }
+
+  protected permissionSummary(feature: PackagePermissionFeature): string {
+    const actions = (['create', 'read', 'update', 'delete'] as const)
+      .filter((action) => feature.permissions[action])
+      .map((action) => action[0].toUpperCase() + action.slice(1));
+    return actions.length ? actions.join(', ') : 'No access';
+  }
+ 
+  // ---- Create -----------------------------------------------------------
+ 
+  protected openCreateDialog(): void {
+    this.formError.set('');
+    this.actionError.set('');
+    this.editingPackage.set(null);
+    this.createDialogOpen.set(true);
+  }
+ 
   protected closeCreateDialog(): void {
     if (this.submitting()) return;
     this.createDialogOpen.set(false);
   }
+ 
+  protected onPackageDetailsSubmitted(payload: PackagePayload): void {
+    const item = this.editingPackage();
+    if (item) {
+      this.updatePackage(item, payload);
+      return;
+    }
 
-  protected onCreateDetailsSubmitted(payload: PackagePayload): void {
     this.draft.startDraft(payload);
     this.createDialogOpen.set(false);
-    this.router.navigate(['/package/create/permissions']);
+    // Absolute path — the route lives under 'super-admin-dashboard' in app.routes.ts.
+    this.router.navigate([PACKAGE_PERMISSIONS_PATH]);
   }
 
-  // ---- Assign ("Update package") -----------------------------------------------------------
+  private updatePackage(item: PackageRecord, payload: PackagePayload): void {
+    if (this.submitting()) return;
 
+    this.submitting.set(true);
+    this.actionError.set('');
+    this.packagesApi
+      .update(item.id, payload)
+      .pipe(finalize(() => this.submitting.set(false)))
+      .subscribe({
+        next: () => {
+          this.editingPackage.set(null);
+          this.loadPackages();
+          this.loadAllPackagesForDialogs();
+          this.flashSuccess('Package updated successfully.');
+        },
+        error: (error) => {
+          console.error('Package update failed:', error);
+          this.actionError.set(this.getSaveErrorMessage(error, 'Package update failed. Please try again.'));
+        },
+      });
+  }
+ 
+  // ---- Assign ("Update package") -----------------------------------------------------------
+ 
   /**
    * Row entry point (kebab → "+" icon). Admin is already known, so the
    * modal renders a readonly email and just needs a package chosen.
@@ -285,7 +361,7 @@ export class PackageManagement implements OnInit {
       this.loadAllPackagesForDialogs();
     }
   }
-
+ 
   /**
    * Header entry point ("Update Package" button). No row context yet, so
    * assigningAdmin() stays null and the modal shows a searchable admin
@@ -303,17 +379,17 @@ export class PackageManagement implements OnInit {
       this.loadAllAdminsForDialog();
     }
   }
-
+ 
   protected closeAssignDialog(): void {
     if (this.submitting()) return;
     this.assignDialogOpen.set(false);
     this.assigningAdmin.set(null);
   }
-
+ 
   /** Handler for AssignPackageModal's `saved` output (email + packageId — email is either the fixed row admin's or the one picked in the header-flow search combobox). */
   protected onAssignSubmitted({ email, packageId }: PackageAssignRequest): void {
     if (this.submitting()) return;
-
+ 
     this.submitting.set(true);
     this.formError.set('');
     this.packagesApi
@@ -329,32 +405,39 @@ export class PackageManagement implements OnInit {
         error: (error) => this.handleSaveError(error, 'Package assignment failed. Please try again.'),
       });
   }
-
+ 
   // ---- Shared helpers -----------------------------------------------------------
-
+ 
   private handleSaveError(error: { status?: number; error?: unknown }, fallback: string): void {
-    const backendMessage = extractBackendMessage(error as never);
-    if (isServerError(error.status)) {
-      this.formError.set(serverActionErrorMessage);
-      return;
-    }
-    if (isDuplicateNameError(error.status, backendMessage)) {
-      this.formError.set('A package with the same name already exists');
-      return;
-    }
-    this.formError.set(backendMessage || fallback);
+    this.formError.set(this.getSaveErrorMessage(error, fallback));
   }
 
+  private getSaveErrorMessage(error: { status?: number; error?: unknown }, fallback: string): string {
+    const backendMessage = extractBackendMessage(error as never);
+    if (isServerError(error.status)) return serverActionErrorMessage;
+    if (isDuplicateNameError(error.status, backendMessage)) return 'A package with the same name already exists';
+    return backendMessage || fallback;
+  }
+ 
+  /**
+   * PackagePermissionStep should navigate back with:
+   *   this.router.navigate(['/super-admin-dashboard/package'], { state: { packageCreated: true } });
+   * After flashing, we clear the flag from history.state so a browser
+   * refresh doesn't show the success message again.
+   */
   private flashSuccessIfReturningFromPermissionStep(): void {
     const state = this.router.getCurrentNavigation()?.extras.state
       ?? (history.state as { packageCreated?: boolean } | undefined);
     if (state?.packageCreated) {
       this.flashSuccess('Package created successfully.');
+      // Keep Angular's own keys (e.g. navigationId), drop only our flag.
+      history.replaceState({ ...history.state, packageCreated: undefined }, '');
     }
   }
-
+ 
   private flashSuccess(message: string): void {
     this.successMessage.set(message);
     setTimeout(() => this.successMessage.set(''), 3500);
   }
 }
+ 

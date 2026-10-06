@@ -1,4 +1,12 @@
-import { ChangeDetectionStrategy, Component, EventEmitter, Input, Output } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  EventEmitter,
+  Input,
+  OnChanges,
+  Output,
+  SimpleChanges,
+} from '@angular/core';
 import { ReactiveFormsModule } from '@angular/forms';
 import { buildPackageDetailsForm, wordCountOf } from '../forms/package-form';
 import { AVAILABLE_PACKAGE_OPTIONS, PackagePayload, PackageRecord } from '../../../services/package.service';
@@ -11,17 +19,51 @@ import { AVAILABLE_PACKAGE_OPTIONS, PackagePayload, PackageRecord } from '../../
   styleUrl: './create-package-modal.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class CreatePackageModal {
+export class CreatePackageModal implements OnChanges {
   /** Existing packages, for the client-side duplicate-name check. */
   @Input({ required: true }) existingPackages: readonly PackageRecord[] = [];
+  @Input() packageToEdit: PackageRecord | null = null;
+  @Input() submitting = false;
+  @Input() serverError = '';
   @Output() readonly cancelled = new EventEmitter<void>();
   @Output() readonly next = new EventEmitter<PackagePayload>();
 
   protected readonly availablePackageOptions = AVAILABLE_PACKAGE_OPTIONS;
-  protected readonly form = buildPackageDetailsForm(() => this.existingPackages);
+  protected readonly form = buildPackageDetailsForm(
+    () => this.existingPackages,
+    () => this.packageToEdit?.id ?? null,
+  );
+
+  ngOnChanges(changes: SimpleChanges): void {
+    if (!changes['packageToEdit']) return;
+    this.form.reset();
+    const item = this.packageToEdit;
+    if (!item) return;
+
+    this.form.patchValue({
+      name: item.name,
+      availablePackage: item.availablePackage,
+      description: item.description ?? '',
+      price: item.price,
+      billingCycle: item.billingCycle,
+      userLimit: item.userLimit,
+      storageLimit: item.storageLimit,
+    });
+  }
 
   protected descriptionWordCount(): number {
     return wordCountOf(this.form.controls.description.value);
+  }
+
+  protected preventNonNumericPriceInput(event: KeyboardEvent): void {
+    if (
+      ['e', 'E', '+', '-'].includes(event.key) &&
+      !event.ctrlKey &&
+      !event.metaKey &&
+      !event.altKey
+    ) {
+      event.preventDefault();
+    }
   }
 
   protected onSubmit(): void {
@@ -37,7 +79,7 @@ export class CreatePackageModal {
       billingCycle: value.billingCycle as PackagePayload['billingCycle'],
       userLimit: value.userLimit!,
       storageLimit: value.storageLimit,
-      permissions: [],
+      permissions: this.packageToEdit?.permissions ?? [],
     });
   }
 
