@@ -122,7 +122,8 @@
         </button>
         <button
           [disabled]="submitting()"
-          class="h-11 w-32 rounded-full bg-[#f6f6f6] text-xs font-medium text-gray-700 transition hover:bg-[#62b9c8] hover:text-white disabled:opacity-50"
+          [class.invite-submit-button-ready]="form().controls['email'].valid"
+          class="h-11 w-32 rounded-full bg-[#f6f6f6] text-xs font-medium text-gray-700 hover:bg-[#41ACC0] hover:text-gray-600 transition disabled:opacity-50"
           type="submit"
         >
           {{ submitting() ? 'Sending…' : 'Send Invite' }}

@@ -23,6 +23,7 @@ export function buildRoleForm(fb: FormBuilder, existingNames: () => string[]): F
       [
         Validators.required,
         notOnlyWhitespaceValidator,
+        Validators.pattern(/^[\p{L} ]+$/u),
         Validators.minLength(4),
         Validators.maxLength(50),
         duplicateRoleNameValidator(existingNames),

@@ -16,7 +16,6 @@ export class CreateRoleModal {
   readonly cancelled = output<void>();
   readonly continued = output<void>();
 
-  // Suggestions only (datalist) — role names aren't restricted to this list,
-  // any unique name >= 4 chars is accepted per RoleDto.Request.
+  // Suggestions only (datalist); any unique name of at least 4 letters/spaces is accepted.
   readonly acceptedRoleNames = ['Admin', 'Instructor', 'Learner', 'Content Manager', 'Support Staff'];
 }

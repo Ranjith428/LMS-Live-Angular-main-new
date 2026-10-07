@@ -33,14 +33,18 @@
           <option [value]="roleName"></option>
         }
       </datalist>
-      <p id="role-name-guidance" class="text-[10px] text-neutral-500">
+      <div id="role-name-guidance" class="text-[10px] text-neutral-500">
         Choose a suggested role or enter another role name.
-      </p>
+        {{ 50 - (form().controls['roleName'].value?.length ?? 0) }} characters remaining
+    
+      </div>
       @if (form().controls['roleName'].touched) {
         @if (form().controls['roleName'].hasError('required')) {
           <p class="text-xs text-red-500">Role Name is required.</p>
         } @else if (form().controls['roleName'].hasError('whitespace')) {
           <p class="text-xs text-red-500">Role Name cannot contain only spaces.</p>
+        } @else if (form().controls['roleName'].hasError('pattern')) {
+          <p class="text-xs text-red-500">Role Name can contain letters and spaces only.</p>
         } @else if (form().controls['roleName'].hasError('minlength')) {
           <p class="text-xs text-red-500">Role Name must contain at least 4 characters.</p>
         } @else if (form().controls['roleName'].hasError('maxlength')) {
