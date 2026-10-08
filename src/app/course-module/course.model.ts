@@ -5,8 +5,8 @@ export interface ApiResponse<T> {
 }
 
 export type CourseLevel = 'BEGINNER' | 'INTERMEDIATE' | 'ADVANCED';
-export type CourseStatus = 'DRAFT' | 'PUBLISHED' | 'ARCHIVED';
-export type CourseFilter = 'ALL' | CourseStatus;
+export type CourseStatus = 'DRAFT' | 'PUBLISHED' | 'ARCHIVED' | 'UPCOMING';
+export type CourseFilter = 'ALL' | 'UPCOMING' | CourseStatus;
 
 export interface CourseCategory {
   id: number;
@@ -51,7 +51,7 @@ export const COURSE_CATEGORIES: CourseCategory[] = [
 ];
 
 export const COURSE_LEVELS: CourseLevel[] = ['BEGINNER', 'INTERMEDIATE', 'ADVANCED'];
-export const COURSE_STATUSES: CourseStatus[] = ['DRAFT', 'PUBLISHED', 'ARCHIVED'];
+export const COURSE_STATUSES: CourseStatus[] = ['DRAFT', 'PUBLISHED', 'ARCHIVED', 'UPCOMING',];
 
 export const MAX_THUMBNAIL_BYTES = 5 * 1024 * 1024;
 export const ALLOWED_THUMBNAIL_TYPES = ['image/jpeg', 'image/png'];

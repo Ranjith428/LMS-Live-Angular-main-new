@@ -43,7 +43,7 @@ export class CourseManagement {
   readonly loadError = signal<string | null>(null);
   readonly search = signal('');
   readonly courseFilter = signal<CourseFilter>('ALL');
-  readonly courseFilterOptions: CourseFilter[] = ['ALL', 'DRAFT', 'PUBLISHED', 'ARCHIVED'];
+  readonly courseFilterOptions: CourseFilter[] = ['ALL', 'DRAFT', 'PUBLISHED', 'ARCHIVED', 'UPCOMING'];
   readonly openDropdown = signal<DropdownName | null>(null);
   // NEW: which course card's 3-dot menu is open
   readonly openCardMenuId = signal<number | null>(null);
@@ -456,7 +456,7 @@ export class CourseManagement {
         return 'bg-amber-500';
       case 'PUBLISHED':
         return 'bg-violet-600';
-      case 'ARCHIVED':
+      case 'ARCHIVED': case 'UPCOMING':
         return 'bg-slate-500';
     }
   }
