@@ -21,7 +21,7 @@ import {
   Instructor,
 } from '../../course.model';
 
-type DropdownName = 'category' | 'instructor' | 'level';
+type DropdownName = 'status'|'category' | 'instructor' | 'level'  ;
 
 /**
  * Purely presentational: owns no course/lookup state of its own, only UI-local state

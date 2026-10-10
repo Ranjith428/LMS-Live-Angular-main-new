@@ -2,21 +2,27 @@
 
   <main class="relative z-10 px-4 pb-7 sm:px-6 lg:px-10">
     <div class="my-2 mb-5 flex flex-wrap items-center gap-3">
-      <label class="flex h-10 w-40 items-center rounded-full bg-white px-5 text-xs">
-        <svg viewBox="0 0 24 24" class="mr-2 h-4 w-4 shrink-0 fill-none stroke-[#777]" stroke-width="1.8" aria-hidden="true">
-          <circle cx="11" cy="11" r="7"></circle>
-          <path d="m20 20-4-4"></path>
-        </svg>
-        <input
-          class="w-full bg-transparent outline-none placeholder:text-[#777]"
-          type="search"
-          placeholder="Find"
-          aria-label="Find courses"
-          pattern="[A-Za-z0-9 ]*"
-          [value]="search()"
-          (input)="updateSearch($any($event.target).value)"
-        />
-      </label>
+     
+<label class="flex h-10 w-40 items-center rounded-full bg-white px-5 text-xs">
+<svg viewBox="0 0 24 24" class="mr-2 h-4 w-4 shrink-0 fill-none stroke-[#777]" stroke-width="1.8" aria-hidden="true">
+<circle cx="11" cy="11" r="7"></circle>
+<path d="m20 20-4-4"></path>
+</svg>
+  <input class="w-full min-w-0 bg-transparent outline-none placeholder:text-[#777] [&::-webkit-search-cancel-button]:hidden [&::-webkit-search-decoration]:hidden"
+    type="search"
+    placeholder="Find"
+    aria-label="Find courses"
+    pattern="[A-Za-z0-9 ]*"
+    [value]="search()"
+    (input)="updateSearch($any($event.target).value)"/>
+  @if (search()) {
+<button type="button"class="ml-1 flex h-4 w-4 shrink-0 items-center justify-center text-red-500 hover:text-red-600"aria-label="Clear search" (click)="updateSearch('')">
+<svg viewBox="0 0 24 24" class="h-4 w-4" fill="none"stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true">
+<path d="M18 6 6 18M6 6l12 12"></path>
+</svg>
+</button>
+  }
+</label>
       <div class="relative z-30" (click)="$event.stopPropagation()">
         <button
           type="button"
@@ -32,7 +38,7 @@
           </svg>
         </button>
         @if (openDropdown() === 'filter') {
-          <div class="absolute left-0 top-11 w-40 overflow-y-auto rounded-[28px] bg-white py-2 text-center shadow-[0_14px_25px_rgba(0,0,0,.2)] ring-1 ring-black/5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" role="menu">
+          <div class="absolute left-0 top-10 w-40 overflow-y-auto rounded-[28px] bg-white py-2 text-center shadow-[0_14px_25px_rgba(0,0,0,.2)] ring-1 ring-black/5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" role="menu">
             @for (option of courseFilterOptions; track option) {
               <button
                 type="button"
@@ -46,7 +52,7 @@
         }
       </div>
       @if (canManage()) {
-        <button #createButton type="button" class="ml-auto h-10 rounded-full border-0 bg-white px-7 text-xs transition hover:bg-[#62b9c8] hover:text-white" (click)="openCreateModal()">
+        <button #createButton type="button" class="ml-auto h-10 cursor-pointer rounded-full border-0 border-transparent bg-white px-7 text-xs text-[#333] transition-all duration-300 ease-out enabled:hover:border-[#7fb9c7] enabled:hover:bg-[#4694A4] enabled:hover:text-[#f4fbfc] enabled:hover:shadow-[0_8px_18px_-2px_rgba(70,160,180,0.65),0_3px_8px_rgba(120,200,215,0.3)] enabled:focus-visible:border-[#7fb9c7] enabled:focus-visible:bg-[#4694A4] enabled:focus-visible:text-[#f4fbfc] enabled:focus-visible:shadow-[0_8px_18px_-2px_rgba(70,160,180,0.65),0_3px_8px_rgba(120,200,215,0.3)] focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50" (click)="openCreateModal()">
           + Create course
         </button>
       }
@@ -65,7 +71,7 @@
       </div>
     }
 
-    <section class="min-h-[65vh] overflow-y-auto rounded-2xl bg-white p-4 pr-8 pt-5 sm:max-h-[calc(100vh-210px)] sm:min-h-[calc(100vh-210px)] sm:p-6 sm:pr-8" aria-label="Course list">
+    <section class="min-h-[65vh] overflow-y-auto rounded-2xl bg-white p-4 pr-8 pt-5 sm:max-h-[calc(108vh-220px)] sm:min-h-[calc(108vh-220px)] sm:p-6 sm:pr-8" aria-label="Course list">
       @if (loading() && !courses().length) {
         <p class="p-12 text-center">Loading courses…</p>
       } @else if (!filteredCourses().length) {
@@ -182,7 +188,7 @@
                     <div><dt class="text-[10px]">Status</dt><dd class="mt-1 truncate text-[9px]">{{ courseStatusLabel(course.status) }}</dd></div>
                   </dl>
                   @if (canManage()) {
-                    <button type="button" class="h-6 shrink-0 cursor-pointer rounded-full bg-white px-4 text-[9px] font-medium text-neutral-700 shadow-sm transition hover:bg-[#61b7c5] hover:text-white" (click)="openViewModal(course)" [attr.aria-label]="'View ' + course.name">
+                    <button type="button" class="h-6 shrink-0 cursor-pointer rounded-full border border-transparent bg-white px-4 text-[9px] text-[#333] font-medium transition-all duration-300 ease-out enabled:hover:border-[#7fb9c7] enabled:hover:bg-[#4694A4] enabled:hover:text-[#f4fbfc] enabled:hover:shadow-[0_8px_18px_-2px_rgba(70,160,180,0.65),0_3px_8px_rgba(120,200,215,0.3)] enabled:focus-visible:border-[#7fb9c7] enabled:focus-visible:bg-[#4694A4] enabled:focus-visible:text-[#f4fbfc] enabled:focus-visible:shadow-[0_8px_18px_-2px_rgba(70,160,180,0.65),0_3px_8px_rgba(120,200,215,0.3)] focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50" (click)="openViewModal(course)" [attr.aria-label]="'View ' + course.name">
                       View
                     </button>
                   } @else {

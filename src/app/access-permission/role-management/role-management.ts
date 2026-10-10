@@ -22,6 +22,13 @@ import {
 type RoleFilterField = 'Role Name' | 'Status';
 type DialogKind = 'invite' | 'role' | null;
 
+const ALLOWED_PERMISSION_CATEGORIES = new Set([
+  'Authentication',
+  'Content Management',
+  'Course Management',
+  'Enrollment',
+]);
+
 @Component({
   selector: 'app-role-management',
   imports: [InvitePeopel, CreateRoleModal, RolePermission],
@@ -276,9 +283,12 @@ export class RoleManagement implements OnInit {
 
     const rows: PermissionRow[] = [];
     for (const category of catalog) {
+      if (!ALLOWED_PERMISSION_CATEGORIES.has(category.categoryName)) continue;
+
       let isFirstInCategory = true;
       for (const feature of category.features) {
         const saved = savedByFeature.get(feature.id);
+        const isEnrollment = category.categoryName === 'Enrollment';
         rows.push({
           categoryId: category.categoryId,
           categoryName: category.categoryName,
@@ -287,9 +297,9 @@ export class RoleManagement implements OnInit {
           name: feature.name,
           values: {
             create: saved?.permissions.create ?? false,
-            read: saved?.permissions.read ?? false,
-            update: saved?.permissions.update ?? false,
-            delete: saved?.permissions.delete ?? false,
+            read: isEnrollment ? false : saved?.permissions.read ?? false,
+            update: isEnrollment ? false : saved?.permissions.update ?? false,
+            delete: isEnrollment ? false : saved?.permissions.delete ?? false,
           },
         });
         isFirstInCategory = false;
@@ -301,7 +311,15 @@ export class RoleManagement implements OnInit {
   private toRoleCategoryPermissions(rows: PermissionRow[]): Category[] {
     const byCategory = new Map<string, Category>();
     for (const row of rows) {
-      const hasAny = this.actions.some((action) => row.values[action]);
+      if (!ALLOWED_PERMISSION_CATEGORIES.has(row.categoryName)) continue;
+      const isEnrollment = row.categoryName === 'Enrollment';
+      const permissions = {
+        create: row.values.create,
+        read: isEnrollment ? false : row.values.read,
+        update: isEnrollment ? false : row.values.update,
+        delete: isEnrollment ? false : row.values.delete,
+      };
+      const hasAny = this.actions.some((action) => permissions[action]);
       if (!hasAny) continue;
       let category = byCategory.get(row.categoryId);
       if (!category) {
@@ -311,7 +329,7 @@ export class RoleManagement implements OnInit {
       category.features.push({
         id: row.featureId,
         name: row.name,
-        permissions: { ...row.values },
+        permissions,
       });
     }
     return Array.from(byCategory.values());
@@ -322,6 +340,8 @@ export class RoleManagement implements OnInit {
     this.permissions.update((rows) => {
       const next = rows.slice();
       const row = next[rowIndex];
+      if (!row || !ALLOWED_PERMISSION_CATEGORIES.has(row.categoryName)) return rows;
+      if (row.categoryName === 'Enrollment' && action !== 'create') return rows;
       next[rowIndex] = { ...row, values: { ...row.values, [action]: !row.values[action] } };
       return next;
     });
@@ -398,4 +418,27 @@ export class RoleManagement implements OnInit {
     this.success.set(message);
     setTimeout(() => this.success.set(null), 3000);
   }
+  readonly pageSize = 10;
+  readonly currentPage = signal(1);
+  readonly totalPages = computed(() => Math.max(1, Math.ceil(this.filteredRoles().length / this.pageSize)));
+  readonly visiblePage = computed(() => Math.min(this.currentPage(), this.totalPages()));
+  readonly paginatedRoles = computed(() => {
+    const roles = this.filteredRoles();
+    const startIndex = (this.visiblePage() - 1) * this.pageSize;
+    return roles.slice(startIndex, startIndex + this.pageSize);
+  });
+  readonly endItem = computed(() => Math.min(this.visiblePage() * this.pageSize, this.filteredRoles().length));
+
+  nextPage(): void {
+    if (this.visiblePage() < this.totalPages()) {
+      this.currentPage.set(this.visiblePage() + 1);
+    }
+  }
+
+  previousPage(): void {
+    if (this.visiblePage() > 1) {
+      this.currentPage.set(this.visiblePage() - 1);
+    }
+  }
+
 }

@@ -24,7 +24,6 @@ export class RolePermission {
     'Create Role',
     'Role Permission',
   ]);
-  readonly userName = input('Maxx');
 
   readonly role = input<Role | null>(null);
   readonly permissions = input.required<PermissionRow[]>();

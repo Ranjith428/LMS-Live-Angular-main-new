@@ -10,6 +10,7 @@ import { FormGroup, ReactiveFormsModule } from '@angular/forms';
 })
 export class CreateRoleModal {
   readonly form = input.required<FormGroup>();
+  readonly submitting = input(false);
   readonly editing = input(false);
   readonly error = input<string | null>(null);
 
